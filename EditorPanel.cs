@@ -3,14 +3,16 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using System.Linq;
+using MaterialSkin;
+using MaterialSkin.Controls;
 
 namespace LightNovelEditor
 {
-    public class EditorPanel : Panel
+    public class EditorPanel : MaterialCard
     {
         private readonly RichTextBox richTextBox;
-        private readonly Label headerLabel;
-        private readonly Label wordCountLabel;
+        private readonly MaterialLabel headerLabel;
+        private readonly MaterialLabel wordCountLabel;
         private readonly ChapterManager chapterManager;
         
         public event EventHandler? ContentChanged;
@@ -19,14 +21,16 @@ namespace LightNovelEditor
         {
             this.chapterManager = chapterManager;
             this.Dock = DockStyle.Fill;
-            this.BackColor = Color.White;
+            this.Depth = 0;
+            this.MouseState = MaterialSkin.MouseState.HOVER;
             this.Padding = new Padding(20);
             
-            // Create a container panel with shadow effect
-            var containerPanel = new Panel
+            // Create a container panel
+            var containerPanel = new MaterialCard
             {
                 Dock = DockStyle.Fill,
-                BackColor = Color.White,
+                Depth = 1,
+                MouseState = MaterialSkin.MouseState.HOVER,
                 Padding = new Padding(0)
             };
             
@@ -39,8 +43,8 @@ namespace LightNovelEditor
                 AcceptsTab = true,
                 HideSelection = false,
                 BackColor = Color.White,
-                Padding = new Padding(10),
-                ForeColor = Color.FromArgb(60, 60, 60)
+                ForeColor = Color.FromArgb(33, 33, 33),
+                Padding = new Padding(10)
             };
             
             richTextBox.TextChanged += (s, e) => {
@@ -70,35 +74,35 @@ namespace LightNovelEditor
             };
             
             // Add a header with the document name
-            var headerPanel = new Panel
+            var headerPanel = new MaterialCard
             {
                 Dock = DockStyle.Top,
                 Height = 50,
-                BackColor = Color.FromArgb(250, 250, 250),
-                BorderStyle = BorderStyle.None
+                Depth = 0,
+                MouseState = MaterialSkin.MouseState.HOVER
             };
             
-            headerLabel = new Label
+            headerLabel = new MaterialLabel
             {
                 Text = "Untitled Document",
-                ForeColor = Color.FromArgb(80, 80, 80),
-                Font = new Font("Segoe UI Semibold", 12F, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleLeft,
                 Location = new Point(20, 0),
-                Size = new Size(400, 50)
+                Size = new Size(400, 50),
+                Depth = 0,
+                MouseState = MaterialSkin.MouseState.HOVER
             };
             
             // Add word count label
-            wordCountLabel = new Label
+            wordCountLabel = new MaterialLabel
             {
                 Text = "Words: 0",
-                ForeColor = Color.FromArgb(120, 120, 120),
-                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                 TextAlign = ContentAlignment.MiddleRight,
                 Dock = DockStyle.Right,
                 Padding = new Padding(0, 0, 20, 0),
                 AutoSize = false,
-                Size = new Size(150, 50)
+                Size = new Size(150, 50),
+                Depth = 0,
+                MouseState = MaterialSkin.MouseState.HOVER
             };
             
             headerPanel.Controls.Add(wordCountLabel);
@@ -108,8 +112,7 @@ namespace LightNovelEditor
             var paddingPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(20, 15, 20, 15),
-                BackColor = Color.White
+                Padding = new Padding(20, 15, 20, 15)
             };
             paddingPanel.Controls.Add(richTextBox);
             containerPanel.Controls.Add(paddingPanel);
@@ -117,12 +120,10 @@ namespace LightNovelEditor
             // Then add header and divider (they will stack on top)
             containerPanel.Controls.Add(headerPanel);
             
-            // Add a 1px border at the bottom of the header
-            var headerDivider = new Panel
+            // Add a divider
+            var headerDivider = new MaterialDivider
             {
-                Dock = DockStyle.Top,
-                Height = 1,
-                BackColor = Color.FromArgb(230, 230, 230)
+                Dock = DockStyle.Top
             };
             containerPanel.Controls.Add(headerDivider);
             
@@ -233,7 +234,7 @@ namespace LightNovelEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error saving file: {ex.Message}", "Error", 
+                MaterialMessageBox.Show($"Error saving file: {ex.Message}", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
@@ -254,7 +255,7 @@ namespace LightNovelEditor
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error opening file: {ex.Message}", "Error", 
+                MaterialMessageBox.Show($"Error opening file: {ex.Message}", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }

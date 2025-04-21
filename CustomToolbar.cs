@@ -1,10 +1,12 @@
 using System;
 using System.Drawing;
 using System.Windows.Forms;
+using MaterialSkin;
+using MaterialSkin.Controls;
 
 namespace LightNovelEditor
 {
-    public class CustomToolbar : Panel
+    public class CustomToolbar : MaterialCard
     {
         // Events for toolbar actions
         public event EventHandler? NewClicked;
@@ -15,6 +17,8 @@ namespace LightNovelEditor
         public event EventHandler? UnderlineClicked;
         public event EventHandler? FontClicked;
         public event EventHandler? UploadClicked;
+        
+        private FlowLayoutPanel container = new FlowLayoutPanel();
 
         public CustomToolbar()
         {
@@ -25,27 +29,29 @@ namespace LightNovelEditor
         {
             this.Height = 56;
             this.Dock = DockStyle.Top;
-            this.BackColor = Color.FromArgb(250, 250, 250);
-            this.Padding = new Padding(16, 10, 16, 10);
-            this.BorderStyle = BorderStyle.None;
+            this.Depth = 0;
+            this.MouseState = MaterialSkin.MouseState.HOVER;
+            this.Padding = new Padding(16, 8, 16, 8); // Normal padding, we'll position profile panel differently
 
-            // Add a bottom border
-            var bottomBorder = new Panel
+            // Add bottom border
+            this.Paint += (s, e) =>
             {
-                Height = 1,
-                Dock = DockStyle.Bottom,
-                BackColor = Color.FromArgb(230, 230, 230)
+                // Draw a subtle border at the bottom
+                using (var pen = new Pen(Color.FromArgb(200, 200, 200), 1))
+                {
+                    e.Graphics.DrawLine(pen, 0, this.Height - 1, this.Width, this.Height - 1);
+                }
             };
-            this.Controls.Add(bottomBorder);
 
             // Container panel for layout
-            var container = new FlowLayoutPanel
+            container = new FlowLayoutPanel
             {
                 Dock = DockStyle.Fill,
                 BackColor = Color.Transparent,
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
-                AutoSize = true
+                AutoSize = true,
+                Padding = new Padding(0)
             };
             this.Controls.Add(container);
 
@@ -55,19 +61,16 @@ namespace LightNovelEditor
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, 0)
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
             
-            var newButton = CreateToolbarButton("New Document", "📝");
-            newButton.Width = 40;
+            var newButton = CreateToolbarButton("New Document (Ctrl+N)", "📄", MaterialButton.MaterialButtonType.Outlined);
+            var openButton = CreateToolbarButton("Open File (Ctrl+O)", "📂", MaterialButton.MaterialButtonType.Outlined);
+            var saveButton = CreateToolbarButton("Save (Ctrl+S)", "💾", MaterialButton.MaterialButtonType.Outlined);
+
             newButton.Click += (s, e) => NewClicked?.Invoke(this, EventArgs.Empty);
-            
-            var openButton = CreateToolbarButton("Open File", "📂");
-            openButton.Width = 40;
             openButton.Click += (s, e) => OpenClicked?.Invoke(this, EventArgs.Empty);
-            
-            var saveButton = CreateToolbarButton("Save", "💾");
-            saveButton.Width = 40;
             saveButton.Click += (s, e) => SaveClicked?.Invoke(this, EventArgs.Empty);
             
             fileGroup.Controls.Add(newButton);
@@ -75,12 +78,10 @@ namespace LightNovelEditor
             fileGroup.Controls.Add(saveButton);
             
             // Divider
-            var divider1 = new Panel
+            var divider1 = new MaterialDivider
             {
-                Width = 1,
                 Height = 36,
-                BackColor = Color.FromArgb(230, 230, 230),
-                Margin = new Padding(16, 0, 16, 0)
+                Margin = new Padding(8, 0, 8, 0)
             };
             
             // Format operations group
@@ -89,23 +90,25 @@ namespace LightNovelEditor
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, 0)
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
             
-            var boldButton = CreateToolbarButton("Bold", "B");
-            boldButton.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
+            var boldButton = CreateToolbarButton("Bold (Ctrl+B)", "B", MaterialButton.MaterialButtonType.Outlined);
+            boldButton.Font = new Font("Segoe UI Semibold", 16F, FontStyle.Bold);
+            
+            var italicButton = CreateToolbarButton("Italic (Ctrl+I)", "I", MaterialButton.MaterialButtonType.Outlined);
+            italicButton.Font = new Font("Segoe UI", 16F, FontStyle.Italic);
+            
+            var underlineButton = CreateToolbarButton("Underline (Ctrl+U)", "U", MaterialButton.MaterialButtonType.Outlined);
+            underlineButton.Font = new Font("Segoe UI", 16F, FontStyle.Underline);
+            
+            var fontButton = CreateToolbarButton("Font Settings", "Aa", MaterialButton.MaterialButtonType.Outlined);
+            fontButton.Font = new Font("Segoe UI", 16F);
+            
             boldButton.Click += (s, e) => BoldClicked?.Invoke(this, EventArgs.Empty);
-            
-            var italicButton = CreateToolbarButton("Italic", "I");
-            italicButton.Font = new Font("Segoe UI", 11F, FontStyle.Italic);
             italicButton.Click += (s, e) => ItalicClicked?.Invoke(this, EventArgs.Empty);
-            
-            var underlineButton = CreateToolbarButton("Underline", "U");
-            underlineButton.Font = new Font("Segoe UI", 11F, FontStyle.Underline);
             underlineButton.Click += (s, e) => UnderlineClicked?.Invoke(this, EventArgs.Empty);
-            
-            var fontButton = CreateToolbarButton("Font", "Aa");
-            fontButton.Width = 40;
             fontButton.Click += (s, e) => FontClicked?.Invoke(this, EventArgs.Empty);
             
             formatGroup.Controls.Add(boldButton);
@@ -114,12 +117,10 @@ namespace LightNovelEditor
             formatGroup.Controls.Add(fontButton);
 
             // Divider
-            var divider2 = new Panel
+            var divider2 = new MaterialDivider
             {
-                Width = 1,
                 Height = 36,
-                BackColor = Color.FromArgb(230, 230, 230),
-                Margin = new Padding(16, 0, 16, 0)
+                Margin = new Padding(8, 0, 8, 0)
             };
 
             // Upload group
@@ -128,11 +129,11 @@ namespace LightNovelEditor
                 FlowDirection = FlowDirection.LeftToRight,
                 WrapContents = false,
                 AutoSize = true,
-                Margin = new Padding(0, 0, 0, 0)
+                Margin = new Padding(0),
+                Padding = new Padding(0)
             };
 
-            var uploadButton = CreateToolbarButton("Upload to Website", "⬆️");
-            uploadButton.Width = 40;
+            var uploadButton = CreateToolbarButton("Upload Chapter to Website", "⬆️", MaterialButton.MaterialButtonType.Contained);
             uploadButton.Click += (s, e) => UploadClicked?.Invoke(this, EventArgs.Empty);
             uploadGroup.Controls.Add(uploadButton);
             
@@ -143,26 +144,59 @@ namespace LightNovelEditor
             container.Controls.Add(uploadGroup);
         }
         
-        private Button CreateToolbarButton(string tooltip, string text)
+        private MaterialButton CreateToolbarButton(string tooltip, string text, MaterialButton.MaterialButtonType buttonType)
         {
-            var button = new Button
+            var button = new MaterialButton
             {
                 Text = text,
-                Size = new Size(34, 34),
-                Font = new Font("Segoe UI", 11F, FontStyle.Regular),
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.White,
-                ForeColor = Color.FromArgb(60, 60, 70),
-                Cursor = Cursors.Hand
+                Type = buttonType,
+                Size = new Size(40, 40),
+                Depth = 0,
+                MouseState = MaterialSkin.MouseState.HOVER,
+                UseAccentColor = false,
+                AutoSize = false,
+                Margin = new Padding(2),
+                HighEmphasis = buttonType == MaterialButton.MaterialButtonType.Contained,
+                Font = new Font("Segoe UI", 16F, FontStyle.Regular)
             };
-            button.FlatAppearance.BorderSize = 1;
-            button.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
-            button.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
             
-            var toolTip = new ToolTip();
+            var toolTip = new ToolTip
+            {
+                InitialDelay = 200,
+                ShowAlways = true
+            };
             toolTip.SetToolTip(button, tooltip);
             
             return button;
+        }
+        
+        // Method to add profile panel to the toolbar
+        public void AddProfilePanel(Control profilePanel)
+        {
+            // Create a panel to push contents to the right
+            var spacer = new Panel
+            {
+                AutoSize = true,
+                Dock = DockStyle.Right,
+                Margin = new Padding(0),
+                BackColor = Color.Transparent
+            };
+            
+            // Create a panel for the profile on the right
+            var profileContainer = new Panel
+            {
+                Dock = DockStyle.Right,
+                Size = new Size(profilePanel.Width, this.Height),
+                Padding = new Padding(0, 8, 16, 8),
+                BackColor = Color.Transparent
+            };
+            
+            // Add the profile panel to its container
+            profilePanel.Location = new Point(0, 0);
+            profileContainer.Controls.Add(profilePanel);
+            
+            // Add the profile container to the toolbar
+            this.Controls.Add(profileContainer);
         }
     }
 } 

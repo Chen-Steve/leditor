@@ -4,30 +4,44 @@ using System.IO;
 using System.Windows.Forms;
 using System.Threading.Tasks;
 using System.Net.Http;
+using MaterialSkin;
+using MaterialSkin.Controls;
 
 namespace LightNovelEditor
 {
-    public partial class MainForm : Form
+    public partial class MainForm : MaterialForm
     {
         private EditorPanel? editorPanel;
         private NavigationPanel? navigationPanel;
         private CustomToolbar? toolbar;
-        private Panel? profilePanel;
-        private Label? usernameLabel;
+        private MaterialCard? profilePanel;
+        private MaterialLabel? usernameLabel;
         private string? currentFilePath;
         private SplitContainer? splitContainer;
         private bool isInitializing = true;
         private readonly ChapterManager chapterManager;
         private ChapterInfo? currentChapter;
+        private readonly MaterialSkinManager materialSkinManager = MaterialSkinManager.Instance;
 
         public MainForm()
         {
             chapterManager = new ChapterManager();
             try
             {
+                // Initialize MaterialSkinManager
+                materialSkinManager.AddFormToManage(this);
+                materialSkinManager.Theme = MaterialSkinManager.Themes.LIGHT;
+                materialSkinManager.ColorScheme = new ColorScheme(
+                    Primary.Blue400,
+                    Primary.Blue500,
+                    Primary.Blue500,
+                    Accent.LightBlue200,
+                    TextShade.WHITE
+                );
+
                 // Basic form setup
                 InitializeComponent();
-                this.Text = "Light Novel Editor";
+                this.Text = "Lanry Editor";
                 this.MinimumSize = new Size(800, 600);
                 this.Size = new Size(1280, 800);
                 this.StartPosition = FormStartPosition.CenterScreen;
@@ -53,15 +67,6 @@ namespace LightNovelEditor
                 this.Shown += MainForm_Shown;
                 this.Resize += MainForm_Resize;
                 WireUpEvents();
-
-                try
-                {
-                    this.Icon = new Icon(SystemIcons.Application, 40, 40);
-                }
-                catch
-                {
-                    // Ignore icon error
-                }
             }
             catch (Exception ex)
             {
@@ -87,16 +92,6 @@ namespace LightNovelEditor
                     int panel2Min = splitContainer.Panel2MinSize;
                     int maxPossibleDistance = containerWidth - panel2Min - splitterWidth;
 
-                    // Show the current values
-                    string message = $"Container Width: {containerWidth}\n" +
-                                   $"Splitter Width: {splitterWidth}\n" +
-                                   $"Panel1 MinSize: {panel1Min}\n" +
-                                   $"Panel2 MinSize: {panel2Min}\n" +
-                                   $"Max Possible Distance: {maxPossibleDistance}\n" +
-                                   $"Current SplitterDistance: {splitContainer.SplitterDistance}";
-                    
-                    MessageBox.Show(message, "Debug Info");
-
                     // Only proceed if we have valid dimensions
                     if (containerWidth > 0 && maxPossibleDistance > panel1Min)
                     {
@@ -114,15 +109,8 @@ namespace LightNovelEditor
                         }
                         catch (Exception ex)
                         {
-                            MessageBox.Show($"Error setting desired width: {ex.Message}\n\n" +
-                                          $"Attempted to set SplitterDistance to: {280}\n" +
-                                          $"Valid range is: {panel1Min} to {maxPossibleDistance}",
-                                          "Splitter Error");
+                            Console.WriteLine($"Error setting desired width: {ex.Message}");
                         }
-                    }
-                    else
-                    {
-                        MessageBox.Show($"Invalid dimensions for splitter:\n{message}", "Layout Error");
                     }
                 }
 
@@ -172,12 +160,6 @@ namespace LightNovelEditor
                         Console.WriteLine($"Error adjusting splitter: {ex.Message}");
                     }
                 }
-
-                // Update profile panel position
-                if (profilePanel != null)
-                {
-                    profilePanel.BringToFront();
-                }
             }
         }
 
@@ -187,6 +169,9 @@ namespace LightNovelEditor
             toolbar = new CustomToolbar();
             toolbar.Dock = DockStyle.Top;
             this.Controls.Add(toolbar);
+
+            // Create profile panel inline with toolbar
+            CreateProfilePanel();
 
             // Create container panel for the split container
             var containerPanel = new Panel
@@ -203,16 +188,20 @@ namespace LightNovelEditor
                 BorderStyle = BorderStyle.None,
                 FixedPanel = FixedPanel.Panel1,
                 IsSplitterFixed = false,
-                Orientation = Orientation.Vertical
+                Orientation = Orientation.Vertical,
+                SplitterWidth = 1,
+                BackColor = MaterialSkinManager.Instance.ColorScheme.PrimaryColor.Lighten(0.9f)
             };
 
             // Create and add the navigation panel
             navigationPanel = new NavigationPanel(chapterManager);
             splitContainer.Panel1.Controls.Add(navigationPanel);
+            splitContainer.Panel1.Padding = new Padding(0);
 
             // Create and add the editor panel
             editorPanel = new EditorPanel(chapterManager);
             splitContainer.Panel2.Controls.Add(editorPanel);
+            splitContainer.Panel2.Padding = new Padding(0);
 
             // Add the split container to its container panel
             containerPanel.Controls.Add(splitContainer);
@@ -220,7 +209,6 @@ namespace LightNovelEditor
             // Now that the splitter has a real width, set up its constraints and initial distance
             splitContainer.Panel1MinSize = 200;
             splitContainer.Panel2MinSize = 400;
-            splitContainer.SplitterWidth = 1;
 
             // Clamp 280 into the [Panel1MinSize, Width-Panel2MinSize-SplitterWidth] range
             int desired = 280;
@@ -228,78 +216,57 @@ namespace LightNovelEditor
             int safeDistance = Math.Min(Math.Max(desired, splitContainer.Panel1MinSize), maxPossible);
             splitContainer.SplitterDistance = safeDistance;
 
-            // Create profile panel last to ensure it's on top
-            CreateProfilePanel();
-
             // Set proper Z-order
             containerPanel.BringToFront();
             toolbar.BringToFront();
-            if (profilePanel != null)
-            {
-                profilePanel.BringToFront();
-            }
         }
 
         private void CreateProfilePanel()
         {
             // Create profile panel
-            profilePanel = new Panel
+            profilePanel = new MaterialCard
             {
-                Size = new Size(200, 40),  // Reduced height for a more compact look
-                Location = new Point(this.ClientSize.Width - 210, 8),  // Moved down slightly
-                Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                BackColor = Color.FromArgb(248, 249, 250)  // Light gray background
+                Size = new Size(200, 40),
+                Depth = 0,
+                MouseState = MaterialSkin.MouseState.HOVER,
+                Margin = new Padding(0),
+                BackColor = Color.Transparent
             };
 
-            // Add a subtle border and rounded corners
-            profilePanel.Paint += (s, e) =>
+            // Add username label with MaterialSkin styling
+            usernameLabel = new MaterialLabel
             {
-                if (s is Panel panel)
-                {
-                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                    using (var path = new System.Drawing.Drawing2D.GraphicsPath())
-                    {
-                        path.AddArc(0, 0, 20, 20, 180, 90);
-                        path.AddArc(panel.Width - 20, 0, 20, 20, 270, 90);
-                        path.AddArc(panel.Width - 20, panel.Height - 20, 20, 20, 0, 90);
-                        path.AddArc(0, panel.Height - 20, 20, 20, 90, 90);
-                        path.CloseFigure();
-
-                        panel.Region = new Region(path);
-
-                        // Draw a subtle border
-                        using (var pen = new Pen(Color.FromArgb(230, 230, 230), 1))
-                        {
-                            e.Graphics.DrawPath(pen, path);
-                        }
-                    }
-                }
+                AutoSize = false,
+                Size = new Size(160, 40),
+                Location = new Point(40, 0),
+                Depth = 0,
+                MouseState = MaterialSkin.MouseState.HOVER,
+                Text = LoginForm.IsLoggedIn ? LoginForm.CurrentUsername ?? "Guest" : "Guest",
+                TextAlign = ContentAlignment.MiddleLeft,
+                Font = new Font("Segoe UI", 11F, FontStyle.Regular)
             };
 
-            // Add username label with improved styling
-            usernameLabel = new Label
+            // Add user icon
+            var userIcon = new MaterialLabel
             {
-                AutoSize = false,  // We'll control the size
-                Size = new Size(180, 30),
-                Location = new Point(10, 5),  // Centered in panel
-                Font = new Font("Segoe UI Semibold", 11f),  // Slightly larger, semibold font
-                ForeColor = Color.FromArgb(50, 50, 50),  // Darker text for better contrast
-                TextAlign = ContentAlignment.MiddleLeft,  // Center text vertically
-                Text = LoginForm.IsLoggedIn ? LoginForm.CurrentUsername ?? "Guest" : "Guest"
+                AutoSize = false,
+                Size = new Size(40, 40),
+                Location = new Point(0, 0),
+                Depth = 0,
+                MouseState = MaterialSkin.MouseState.HOVER,
+                Text = "👤",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Font = new Font("Segoe UI", 16F)
             };
 
-            // Add hover effect
-            profilePanel.MouseEnter += (s, e) => 
-            {
-                profilePanel.BackColor = Color.FromArgb(240, 241, 242);
-            };
-            profilePanel.MouseLeave += (s, e) => 
-            {
-                profilePanel.BackColor = Color.FromArgb(248, 249, 250);
-            };
-
+            profilePanel.Controls.Add(userIcon);
             profilePanel.Controls.Add(usernameLabel);
-            this.Controls.Add(profilePanel);
+            
+            // Add the profile panel to the toolbar
+            if (toolbar != null)
+            {
+                toolbar.AddProfilePanel(profilePanel);
+            }
         }
 
         private void InitializeComponent()
@@ -394,67 +361,81 @@ namespace LightNovelEditor
         {
             if (navigationPanel == null || editorPanel == null) return;
 
-            using (var form = new Form())
+            using (var form = new MaterialForm())
             {
+                // Apply MaterialSkin to the dialog
+                MaterialSkinManager.Instance.AddFormToManage(form);
+                
                 form.Text = "Add New Chapter";
-                form.Size = new Size(400, 200);
+                form.Size = new Size(400, 250);
                 form.StartPosition = FormStartPosition.CenterParent;
                 form.FormBorderStyle = FormBorderStyle.FixedDialog;
                 form.MaximizeBox = false;
                 form.MinimizeBox = false;
 
-                var chapterNumberLabel = new Label
+                var chapterNumberLabel = new MaterialLabel
                 {
                     Text = "Chapter Number:",
-                    Location = new Point(20, 20),
-                    AutoSize = true
+                    Location = new Point(20, 70),
+                    AutoSize = true,
+                    Depth = 0,
+                    MouseState = MaterialSkin.MouseState.HOVER
                 };
                 form.Controls.Add(chapterNumberLabel);
 
-                var chapterNumberInput = new NumericUpDown
+                var chapterNumberInput = new MaterialTextBox
                 {
-                    Location = new Point(20, 40),
+                    Location = new Point(20, 100),
                     Width = 340,
-                    Minimum = 1,
-                    Maximum = 9999
+                    Text = "1",
+                    Depth = 0,
+                    MouseState = MaterialSkin.MouseState.HOVER
                 };
                 form.Controls.Add(chapterNumberInput);
 
-                var titleLabel = new Label
+                var titleLabel = new MaterialLabel
                 {
                     Text = "Chapter Title:",
-                    Location = new Point(20, 70),
-                    AutoSize = true
+                    Location = new Point(20, 130),
+                    AutoSize = true,
+                    Depth = 0,
+                    MouseState = MaterialSkin.MouseState.HOVER
                 };
                 form.Controls.Add(titleLabel);
 
-                var titleInput = new TextBox
+                var titleInput = new MaterialTextBox
                 {
-                    Location = new Point(20, 90),
-                    Width = 340
+                    Location = new Point(20, 160),
+                    Width = 340,
+                    Depth = 0,
+                    MouseState = MaterialSkin.MouseState.HOVER
                 };
                 form.Controls.Add(titleInput);
 
-                var addButton = new Button
+                var addButton = new MaterialButton
                 {
                     Text = "Add",
-                    DialogResult = DialogResult.OK,
-                    Location = new Point(180, 130),
-                    Width = 80
+                    Type = MaterialButton.MaterialButtonType.Contained,
+                    Location = new Point(180, 200),
+                    Width = 80,
+                    Depth = 0,
+                    MouseState = MaterialSkin.MouseState.HOVER
                 };
                 form.Controls.Add(addButton);
 
-                var cancelButton = new Button
+                var cancelButton = new MaterialButton
                 {
                     Text = "Cancel",
-                    DialogResult = DialogResult.Cancel,
-                    Location = new Point(280, 130),
-                    Width = 80
+                    Type = MaterialButton.MaterialButtonType.Outlined,
+                    Location = new Point(280, 200),
+                    Width = 80,
+                    Depth = 0,
+                    MouseState = MaterialSkin.MouseState.HOVER
                 };
                 form.Controls.Add(cancelButton);
 
-                form.AcceptButton = addButton;
-                form.CancelButton = cancelButton;
+                addButton.Click += (s, e) => form.DialogResult = DialogResult.OK;
+                cancelButton.Click += (s, e) => form.DialogResult = DialogResult.Cancel;
 
                 if (form.ShowDialog() == DialogResult.OK)
                 {
@@ -468,15 +449,17 @@ namespace LightNovelEditor
                         );
                     }
 
-                    var chapterNumber = (int)chapterNumberInput.Value;
-                    var title = titleInput.Text.Trim();
-                    
-                    // Create the new chapter
-                    navigationPanel.AddChapter(chapterNumber, title);
-                    currentChapter = new ChapterInfo { Id = chapterNumber, Title = title };
-                    editorPanel.Clear();
-                    editorPanel.Text = "";
-                    editorPanel.SetDocumentTitle($"Chapter {chapterNumber}: {title}");
+                    if (int.TryParse(chapterNumberInput.Text, out int chapterNumber))
+                    {
+                        var title = titleInput.Text.Trim();
+                        
+                        // Create the new chapter
+                        navigationPanel.AddChapter(chapterNumber, title);
+                        currentChapter = new ChapterInfo { Id = chapterNumber, Title = title };
+                        editorPanel.Clear();
+                        editorPanel.Text = "";
+                        editorPanel.SetDocumentTitle($"Chapter {chapterNumber}: {title}");
+                    }
                 }
             }
         }
@@ -503,7 +486,7 @@ namespace LightNovelEditor
             editorPanel.Clear();
             editorPanel.SetDocumentTitle("Untitled Document");
             currentFilePath = null;
-            this.Text = "Light Novel Editor";
+            this.Text = "Lanry Editor";
         }
 
         private void OpenFile()
@@ -538,7 +521,7 @@ namespace LightNovelEditor
                         editorPanel.LoadFromFile(openFileDialog.FileName);
                         currentFilePath = openFileDialog.FileName;
                         editorPanel.SetDocumentTitle(Path.GetFileName(currentFilePath));
-                        this.Text = $"Light Novel Editor - {Path.GetFileName(currentFilePath)}";
+                        this.Text = $"Lanry Editor - {Path.GetFileName(currentFilePath)}";
                     }
                     catch (Exception ex)
                     {
@@ -566,7 +549,7 @@ namespace LightNovelEditor
                     {
                         currentFilePath = saveFileDialog.FileName;
                         editorPanel.SetDocumentTitle(Path.GetFileName(currentFilePath));
-                        this.Text = $"Light Novel Editor - {Path.GetFileName(currentFilePath)}";
+                        this.Text = $"Lanry Editor - {Path.GetFileName(currentFilePath)}";
                     }
                     else
                     {
@@ -615,125 +598,148 @@ namespace LightNovelEditor
                 }
 
                 // Get novel ID
-                using (var form = new Form())
+                using (var form = new MaterialForm())
                 {
+                    MaterialSkinManager.Instance.AddFormToManage(form);
+                    
                     form.Text = "Upload Chapter";
-                    form.Size = new Size(400, 300);
+                    form.Size = new Size(400, 400);
                     form.StartPosition = FormStartPosition.CenterParent;
                     form.FormBorderStyle = FormBorderStyle.FixedDialog;
                     form.MaximizeBox = false;
                     form.MinimizeBox = false;
 
-                    var novelIdLabel = new Label
+                    var novelIdLabel = new MaterialLabel
                     {
                         Text = "Novel ID:",
-                        Location = new Point(20, 20),
-                        AutoSize = true
+                        Location = new Point(20, 70),
+                        AutoSize = true,
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(novelIdLabel);
 
-                    var novelIdInput = new TextBox
+                    var novelIdInput = new MaterialTextBox
                     {
-                        Location = new Point(20, 40),
-                        Width = 340
+                        Location = new Point(20, 100),
+                        Width = 340,
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(novelIdInput);
 
-                    var chapterNumberLabel = new Label
+                    var chapterNumberLabel = new MaterialLabel
                     {
                         Text = "Chapter Number:",
-                        Location = new Point(20, 70),
-                        AutoSize = true
+                        Location = new Point(20, 140),
+                        AutoSize = true,
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(chapterNumberLabel);
 
-                    var chapterNumberInput = new NumericUpDown
+                    var chapterNumberInput = new MaterialTextBox
                     {
-                        Location = new Point(20, 90),
+                        Location = new Point(20, 170),
                         Width = 340,
-                        Minimum = 1,
-                        Maximum = 9999
+                        Text = "1",
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(chapterNumberInput);
 
-                    var titleLabel = new Label
+                    var titleLabel = new MaterialLabel
                     {
                         Text = "Chapter Title:",
-                        Location = new Point(20, 120),
-                        AutoSize = true
+                        Location = new Point(20, 210),
+                        AutoSize = true,
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(titleLabel);
 
-                    var titleInput = new TextBox
+                    var titleInput = new MaterialTextBox
                     {
-                        Location = new Point(20, 140),
-                        Width = 340
+                        Location = new Point(20, 240),
+                        Width = 340,
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(titleInput);
 
-                    var ageRatingLabel = new Label
+                    var ageRatingLabel = new MaterialLabel
                     {
                         Text = "Age Rating:",
-                        Location = new Point(20, 170),
-                        AutoSize = true
+                        Location = new Point(20, 280),
+                        AutoSize = true,
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(ageRatingLabel);
 
-                    var ageRatingCombo = new ComboBox
+                    var ageRatingCombo = new MaterialComboBox
                     {
-                        Location = new Point(20, 190),
+                        Location = new Point(20, 310),
                         Width = 340,
-                        DropDownStyle = ComboBoxStyle.DropDownList
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     ageRatingCombo.Items.AddRange(new[] { "EVERYONE", "TEEN", "MATURE", "ADULT" });
                     ageRatingCombo.SelectedIndex = 0;
                     form.Controls.Add(ageRatingCombo);
 
-                    var uploadButton = new Button
+                    var uploadButton = new MaterialButton
                     {
                         Text = "Upload",
-                        DialogResult = DialogResult.OK,
-                        Location = new Point(180, 220),
-                        Width = 80
+                        Type = MaterialButton.MaterialButtonType.Contained,
+                        Location = new Point(180, 350),
+                        Width = 80,
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(uploadButton);
 
-                    var cancelButton = new Button
+                    var cancelButton = new MaterialButton
                     {
                         Text = "Cancel",
-                        DialogResult = DialogResult.Cancel,
-                        Location = new Point(280, 220),
-                        Width = 80
+                        Type = MaterialButton.MaterialButtonType.Outlined,
+                        Location = new Point(280, 350),
+                        Width = 80,
+                        Depth = 0,
+                        MouseState = MaterialSkin.MouseState.HOVER
                     };
                     form.Controls.Add(cancelButton);
 
-                    form.AcceptButton = uploadButton;
-                    form.CancelButton = cancelButton;
+                    uploadButton.Click += (s, e) => form.DialogResult = DialogResult.OK;
+                    cancelButton.Click += (s, e) => form.DialogResult = DialogResult.Cancel;
 
                     if (form.ShowDialog() != DialogResult.OK)
                     {
                         return;
                     }
 
-                    var uploader = new ChapterUploader();
-                    var request = new ChapterUploader.ChapterUploadRequest
+                    if (int.TryParse(chapterNumberInput.Text, out int chapterNumber))
                     {
-                        ChapterNumber = (int)chapterNumberInput.Value,
-                        Title = titleInput.Text.Trim(),
-                        Content = editorPanel.Text.Trim(),
-                        AgeRating = ageRatingCombo.SelectedItem?.ToString() ?? "EVERYONE"
-                    };
+                        var uploader = new ChapterUploader();
+                        var request = new ChapterUploader.ChapterUploadRequest
+                        {
+                            ChapterNumber = chapterNumber,
+                            Title = titleInput.Text.Trim(),
+                            Content = editorPanel.Text.Trim(),
+                            AgeRating = ageRatingCombo.SelectedItem?.ToString() ?? "EVERYONE"
+                        };
 
-                    var success = await uploader.UploadChapterAsync(novelIdInput.Text.Trim(), request);
-                    if (success)
-                    {
-                        MessageBox.Show("Chapter uploaded successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        var success = await uploader.UploadChapterAsync(novelIdInput.Text.Trim(), request);
+                        if (success)
+                        {
+                            MaterialMessageBox.Show("Chapter uploaded successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
                     }
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error during upload: {ex.Message}", "Upload Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MaterialMessageBox.Show($"Error during upload: {ex.Message}", "Upload Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -742,7 +748,6 @@ namespace LightNovelEditor
             if (usernameLabel != null)
             {
                 var newText = LoginForm.IsLoggedIn ? LoginForm.CurrentUsername ?? "Guest" : "Guest";
-                MessageBox.Show($"Updating profile UI:\nIsLoggedIn: {LoginForm.IsLoggedIn}\nCurrentUsername: {LoginForm.CurrentUsername}\nNew Label Text: {newText}", "Debug");
                 usernameLabel.Text = newText;
             }
         }

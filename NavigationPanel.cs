@@ -2,10 +2,12 @@ using System;
 using System.Drawing;
 using System.Windows.Forms;
 using System.Linq;
+using MaterialSkin;
+using MaterialSkin.Controls;
 
 namespace LightNovelEditor
 {
-    public class NavigationPanel : Panel
+    public class NavigationPanel : MaterialCard
     {
         private readonly TreeView treeView;
         private readonly ChapterManager chapterManager;
@@ -19,28 +21,41 @@ namespace LightNovelEditor
             this.chapterManager = chapterManager;
             Dock = DockStyle.Left;
             Width = 250;
-            BackColor = Color.White;
+            Depth = 0;
+            MouseState = MaterialSkin.MouseState.HOVER;
+
+            // Create a container for proper padding
+            var container = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(1)
+            };
 
             treeView = new TreeView
             {
                 Dock = DockStyle.Fill,
                 ShowLines = true,
-                HideSelection = false
+                HideSelection = false,
+                BorderStyle = BorderStyle.None,
+                Font = new Font("Segoe UI", 10F),
+                BackColor = MaterialSkinManager.Instance.ColorScheme.PrimaryColor.Lighten(0.95f),
+                ForeColor = MaterialSkinManager.Instance.ColorScheme.TextColor
             };
 
             treeView.AfterSelect += TreeView_AfterSelect;
-            Controls.Add(treeView);
+            container.Controls.Add(treeView);
+            Controls.Add(container);
 
             // Add a button for adding new chapters
-            var addButton = new Button
+            var addButton = new MaterialButton
             {
                 Text = "Add Chapter",
+                Type = MaterialButton.MaterialButtonType.Contained,
                 Dock = DockStyle.Bottom,
-                Height = 30,
-                FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(240, 240, 240),
-                ForeColor = Color.FromArgb(60, 60, 60),
-                Font = new Font("Segoe UI", 9F)
+                Height = 36,
+                Depth = 0,
+                MouseState = MaterialSkin.MouseState.HOVER,
+                UseAccentColor = false
             };
             addButton.Click += (s, e) => AddChapterRequested?.Invoke(this, EventArgs.Empty);
             Controls.Add(addButton);
