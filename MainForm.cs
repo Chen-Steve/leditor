@@ -3,6 +3,7 @@ using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
 using System.Threading.Tasks;
+using System.Net.Http;
 
 namespace LightNovelEditor
 {
@@ -11,6 +12,8 @@ namespace LightNovelEditor
         private EditorPanel? editorPanel;
         private NavigationPanel? navigationPanel;
         private CustomToolbar? toolbar;
+        private Panel? profilePanel;
+        private Label? usernameLabel;
         private string? currentFilePath;
         private SplitContainer? splitContainer;
         private bool isInitializing = true;
@@ -33,6 +36,14 @@ namespace LightNovelEditor
                 using (var loginForm = new LoginForm())
                 {
                     loginForm.ShowDialog();
+                    if (loginForm.DialogResult == DialogResult.OK && !loginForm.SkippedLogin)
+                    {
+                        // Ensure we update UI only after successful login
+                        if (LoginForm.IsLoggedIn && !string.IsNullOrEmpty(LoginForm.CurrentUsername))
+                        {
+                            UpdateProfileUI();
+                        }
+                    }
                 }
 
                 // Create UI components
@@ -129,34 +140,43 @@ namespace LightNovelEditor
 
         private void MainForm_Resize(object? sender, EventArgs e)
         {
-            if (!isInitializing && splitContainer != null)
+            if (!isInitializing)
             {
-                try
+                if (splitContainer != null)
                 {
-                    // Get the current available width
-                    int availableWidth = splitContainer.Width;
-                    
-                    // Only adjust if we have enough width for both panels
-                    if (availableWidth > (splitContainer.Panel1MinSize + splitContainer.Panel2MinSize + splitContainer.SplitterWidth))
+                    try
                     {
-                        // Try to maintain current Panel1 width if possible
-                        int currentPanel1Width = splitContainer.SplitterDistance;
-                        int maxPanel1Width = availableWidth - splitContainer.Panel2MinSize - splitContainer.SplitterWidth;
+                        // Get the current available width
+                        int availableWidth = splitContainer.Width;
                         
-                        // Ensure we're within bounds
-                        int safeDistance = Math.Min(currentPanel1Width, maxPanel1Width);
-                        safeDistance = Math.Max(safeDistance, splitContainer.Panel1MinSize);
-                        
-                        if (splitContainer.SplitterDistance != safeDistance)
+                        // Only adjust if we have enough width for both panels
+                        if (availableWidth > (splitContainer.Panel1MinSize + splitContainer.Panel2MinSize + splitContainer.SplitterWidth))
                         {
-                            splitContainer.SplitterDistance = safeDistance;
+                            // Try to maintain current Panel1 width if possible
+                            int currentPanel1Width = splitContainer.SplitterDistance;
+                            int maxPanel1Width = availableWidth - splitContainer.Panel2MinSize - splitContainer.SplitterWidth;
+                            
+                            // Ensure we're within bounds
+                            int safeDistance = Math.Min(currentPanel1Width, maxPanel1Width);
+                            safeDistance = Math.Max(safeDistance, splitContainer.Panel1MinSize);
+                            
+                            if (splitContainer.SplitterDistance != safeDistance)
+                            {
+                                splitContainer.SplitterDistance = safeDistance;
+                            }
                         }
                     }
+                    catch (Exception ex)
+                    {
+                        // Log error but don't show message box to avoid annoying the user
+                        Console.WriteLine($"Error adjusting splitter: {ex.Message}");
+                    }
                 }
-                catch (Exception ex)
+
+                // Update profile panel position
+                if (profilePanel != null)
                 {
-                    // Log error but don't show message box to avoid annoying the user
-                    Console.WriteLine($"Error adjusting splitter: {ex.Message}");
+                    profilePanel.BringToFront();
                 }
             }
         }
@@ -208,9 +228,78 @@ namespace LightNovelEditor
             int safeDistance = Math.Min(Math.Max(desired, splitContainer.Panel1MinSize), maxPossible);
             splitContainer.SplitterDistance = safeDistance;
 
+            // Create profile panel last to ensure it's on top
+            CreateProfilePanel();
+
             // Set proper Z-order
             containerPanel.BringToFront();
             toolbar.BringToFront();
+            if (profilePanel != null)
+            {
+                profilePanel.BringToFront();
+            }
+        }
+
+        private void CreateProfilePanel()
+        {
+            // Create profile panel
+            profilePanel = new Panel
+            {
+                Size = new Size(200, 40),  // Reduced height for a more compact look
+                Location = new Point(this.ClientSize.Width - 210, 8),  // Moved down slightly
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                BackColor = Color.FromArgb(248, 249, 250)  // Light gray background
+            };
+
+            // Add a subtle border and rounded corners
+            profilePanel.Paint += (s, e) =>
+            {
+                if (s is Panel panel)
+                {
+                    e.Graphics.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    using (var path = new System.Drawing.Drawing2D.GraphicsPath())
+                    {
+                        path.AddArc(0, 0, 20, 20, 180, 90);
+                        path.AddArc(panel.Width - 20, 0, 20, 20, 270, 90);
+                        path.AddArc(panel.Width - 20, panel.Height - 20, 20, 20, 0, 90);
+                        path.AddArc(0, panel.Height - 20, 20, 20, 90, 90);
+                        path.CloseFigure();
+
+                        panel.Region = new Region(path);
+
+                        // Draw a subtle border
+                        using (var pen = new Pen(Color.FromArgb(230, 230, 230), 1))
+                        {
+                            e.Graphics.DrawPath(pen, path);
+                        }
+                    }
+                }
+            };
+
+            // Add username label with improved styling
+            usernameLabel = new Label
+            {
+                AutoSize = false,  // We'll control the size
+                Size = new Size(180, 30),
+                Location = new Point(10, 5),  // Centered in panel
+                Font = new Font("Segoe UI Semibold", 11f),  // Slightly larger, semibold font
+                ForeColor = Color.FromArgb(50, 50, 50),  // Darker text for better contrast
+                TextAlign = ContentAlignment.MiddleLeft,  // Center text vertically
+                Text = LoginForm.IsLoggedIn ? LoginForm.CurrentUsername ?? "Guest" : "Guest"
+            };
+
+            // Add hover effect
+            profilePanel.MouseEnter += (s, e) => 
+            {
+                profilePanel.BackColor = Color.FromArgb(240, 241, 242);
+            };
+            profilePanel.MouseLeave += (s, e) => 
+            {
+                profilePanel.BackColor = Color.FromArgb(248, 249, 250);
+            };
+
+            profilePanel.Controls.Add(usernameLabel);
+            this.Controls.Add(profilePanel);
         }
 
         private void InitializeComponent()
@@ -645,6 +734,16 @@ namespace LightNovelEditor
             catch (Exception ex)
             {
                 MessageBox.Show($"Error during upload: {ex.Message}", "Upload Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void UpdateProfileUI()
+        {
+            if (usernameLabel != null)
+            {
+                var newText = LoginForm.IsLoggedIn ? LoginForm.CurrentUsername ?? "Guest" : "Guest";
+                MessageBox.Show($"Updating profile UI:\nIsLoggedIn: {LoginForm.IsLoggedIn}\nCurrentUsername: {LoginForm.CurrentUsername}\nNew Label Text: {newText}", "Debug");
+                usernameLabel.Text = newText;
             }
         }
     }
