@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using System.Collections.Generic;
 using System.Net.Http;
 using System.Text;
+using System.IO;
 using Newtonsoft.Json;
 using MaterialSkin;
 using MaterialSkin.Controls;
@@ -121,15 +122,21 @@ namespace LightNovelEditor
             try
             {
                 // Attempt to load the logo
-                string logoPath = "lanry.jpg";
-                if (System.IO.File.Exists(logoPath))
+                string logoPath = Path.Combine(Application.StartupPath, "Assets", "lanry.jpg");
+                if (!File.Exists(logoPath))
+                {
+                    // Try looking up one directory to handle debug/release folders
+                    var baseDir = Directory.GetParent(Application.StartupPath)?.Parent?.Parent?.FullName ?? Application.StartupPath;
+                    logoPath = Path.Combine(baseDir, "Assets", "lanry.jpg");
+                }
+                if (File.Exists(logoPath))
                 {
                     logoBox.Image = Image.FromFile(logoPath);
                 }
                 else
                 {
                     // Create a text-based logo if image not found
-                    MaterialMessageBox.Show("Logo file 'lanry.png' not found.", "Warning",
+                    MaterialMessageBox.Show("Logo file 'lanry.jpg' not found.", "Warning",
                         MessageBoxButtons.OK, MessageBoxIcon.Warning);
                         
                     /* Placeholder LE logo
@@ -543,7 +550,7 @@ namespace LightNovelEditor
             public string? AuthorBio { get; set; }
 
             [JsonProperty("coins")]
-            public int Coins { get; set; }
+            public decimal Coins { get; set; }
         }
 
         private void LoginForm_FormClosed(object? sender, FormClosedEventArgs e)
