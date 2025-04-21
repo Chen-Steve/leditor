@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using System.Linq;
 
 namespace LightNovelEditor
 {
@@ -9,6 +10,7 @@ namespace LightNovelEditor
     {
         private readonly RichTextBox richTextBox;
         private readonly Label headerLabel;
+        private readonly Label wordCountLabel;
         
         public event EventHandler? ContentChanged;
         
@@ -39,7 +41,31 @@ namespace LightNovelEditor
                 ForeColor = Color.FromArgb(60, 60, 60)
             };
             
-            richTextBox.TextChanged += (s, e) => ContentChanged?.Invoke(this, EventArgs.Empty);
+            richTextBox.TextChanged += (s, e) => {
+                ContentChanged?.Invoke(this, EventArgs.Empty);
+                UpdateWordCount();
+            };
+            
+            richTextBox.KeyDown += (s, e) => {
+                if (e.Control)
+                {
+                    switch (e.KeyCode)
+                    {
+                        case Keys.B:
+                            e.SuppressKeyPress = true;
+                            ToggleBold();
+                            break;
+                        case Keys.I:
+                            e.SuppressKeyPress = true;
+                            ToggleItalic();
+                            break;
+                        case Keys.U:
+                            e.SuppressKeyPress = true;
+                            ToggleUnderline();
+                            break;
+                    }
+                }
+            };
             
             // Add a header with the document name
             var headerPanel = new Panel
@@ -60,7 +86,33 @@ namespace LightNovelEditor
                 Size = new Size(400, 50)
             };
             
+            // Add word count label
+            wordCountLabel = new Label
+            {
+                Text = "Words: 0",
+                ForeColor = Color.FromArgb(120, 120, 120),
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular),
+                TextAlign = ContentAlignment.MiddleRight,
+                Dock = DockStyle.Right,
+                Padding = new Padding(0, 0, 20, 0),
+                AutoSize = false,
+                Size = new Size(150, 50)
+            };
+            
+            headerPanel.Controls.Add(wordCountLabel);
             headerPanel.Controls.Add(headerLabel);
+
+            // Add padding panel first (at the bottom of the stack)
+            var paddingPanel = new Panel
+            {
+                Dock = DockStyle.Fill,
+                Padding = new Padding(20, 15, 20, 15),
+                BackColor = Color.White
+            };
+            paddingPanel.Controls.Add(richTextBox);
+            containerPanel.Controls.Add(paddingPanel);
+
+            // Then add header and divider (they will stack on top)
             containerPanel.Controls.Add(headerPanel);
             
             // Add a 1px border at the bottom of the header
@@ -71,16 +123,6 @@ namespace LightNovelEditor
                 BackColor = Color.FromArgb(230, 230, 230)
             };
             containerPanel.Controls.Add(headerDivider);
-            
-            // Add padding panel
-            var paddingPanel = new Panel
-            {
-                Dock = DockStyle.Fill,
-                Padding = new Padding(20, 15, 20, 15),
-                BackColor = Color.White
-            };
-            paddingPanel.Controls.Add(richTextBox);
-            containerPanel.Controls.Add(paddingPanel);
             
             this.Controls.Add(containerPanel);
         }
@@ -218,6 +260,13 @@ namespace LightNovelEditor
         public void SetDocumentTitle(string title)
         {
             headerLabel.Text = title;
+        }
+        
+        private void UpdateWordCount()
+        {
+            var text = richTextBox.Text.Trim();
+            int wordCount = text.Length == 0 ? 0 : text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
+            wordCountLabel.Text = $"Words: {wordCount:N0}";
         }
     }
 } 

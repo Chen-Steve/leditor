@@ -9,7 +9,6 @@ namespace LightNovelEditor
     {
         private EditorPanel? editorPanel;
         private NavigationPanel? navigationPanel;
-        private CustomMenuBar? menuBar;
         private CustomToolbar? toolbar;
         private string? currentFilePath;
         private SplitContainer? splitContainer;
@@ -154,11 +153,6 @@ namespace LightNovelEditor
 
         private void CreateUIComponents()
         {
-            // Create the menu bar
-            menuBar = new CustomMenuBar();
-            menuBar.Dock = DockStyle.Top;
-            this.Controls.Add(menuBar);
-            
             // Create the toolbar
             toolbar = new CustomToolbar();
             toolbar.Dock = DockStyle.Top;
@@ -168,7 +162,7 @@ namespace LightNovelEditor
             var containerPanel = new Panel
             {
                 Dock = DockStyle.Fill,
-                Padding = new Padding(0)
+                Padding = new Padding(0, 56, 0, 0)
             };
             this.Controls.Add(containerPanel);
             
@@ -215,7 +209,6 @@ namespace LightNovelEditor
             // Set proper Z-order
             containerPanel.BringToFront();
             toolbar.BringToFront();
-            menuBar.BringToFront();
         }
 
         private void InitializeComponent()
@@ -230,7 +223,7 @@ namespace LightNovelEditor
         
         private void WireUpEvents()
         {
-            if (menuBar == null || editorPanel == null || navigationPanel == null || toolbar == null)
+            if (editorPanel == null || navigationPanel == null || toolbar == null)
             {
                 MessageBox.Show("Error: UI components not initialized properly.", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -239,25 +232,6 @@ namespace LightNovelEditor
             
             try
             {
-                // Menu events
-                menuBar.NewClicked += (s, e) => NewFile();
-                menuBar.OpenClicked += (s, e) => OpenFile();
-                menuBar.SaveClicked += (s, e) => SaveFile(false);
-                menuBar.SaveAsClicked += (s, e) => SaveFile(true);
-                menuBar.ExitClicked += (s, e) => Application.Exit();
-                
-                menuBar.UndoClicked += (s, e) => editorPanel.Undo();
-                menuBar.RedoClicked += (s, e) => editorPanel.Redo();
-                menuBar.CutClicked += (s, e) => editorPanel.Cut();
-                menuBar.CopyClicked += (s, e) => editorPanel.Copy();
-                menuBar.PasteClicked += (s, e) => editorPanel.Paste();
-                menuBar.SelectAllClicked += (s, e) => editorPanel.SelectAll();
-                
-                menuBar.FontClicked += (s, e) => FormatFont();
-                menuBar.BoldClicked += (s, e) => editorPanel.ToggleBold();
-                menuBar.ItalicClicked += (s, e) => editorPanel.ToggleItalic();
-                menuBar.UnderlineClicked += (s, e) => editorPanel.ToggleUnderline();
-                
                 // Toolbar events
                 toolbar.NewClicked += (s, e) => NewFile();
                 toolbar.OpenClicked += (s, e) => OpenFile();

@@ -17,31 +17,11 @@ namespace LightNovelEditor
                 this.BackColor = Color.FromArgb(250, 250, 250);
                 this.Dock = DockStyle.Fill;
                 
-                // Create header
-                var titlePanel = new Panel
-                {
-                    Height = 56,
-                    Dock = DockStyle.Top,
-                    BackColor = Color.FromArgb(48, 48, 56)
-                };
-                
-                var titleLabel = new Label
-                {
-                    Text = "PROJECT EXPLORER",
-                    ForeColor = Color.White,
-                    Font = new Font("Segoe UI Semibold", 11F, FontStyle.Regular),
-                    TextAlign = ContentAlignment.MiddleCenter,
-                    Dock = DockStyle.Fill
-                };
-                
-                titlePanel.Controls.Add(titleLabel);
-                this.Controls.Add(titlePanel);
-
                 // Add container panel with padding
                 var contentPanel = new Panel
                 {
                     Dock = DockStyle.Fill,
-                    Padding = new Padding(5, 10, 5, 5)
+                    Padding = new Padding(5, 5, 5, 5)
                 };
                 this.Controls.Add(contentPanel);
                 
