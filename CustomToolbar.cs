@@ -14,6 +14,7 @@ namespace LightNovelEditor
         public event EventHandler? ItalicClicked;
         public event EventHandler? UnderlineClicked;
         public event EventHandler? FontClicked;
+        public event EventHandler? UploadClicked;
 
         public CustomToolbar()
         {
@@ -74,7 +75,7 @@ namespace LightNovelEditor
             fileGroup.Controls.Add(saveButton);
             
             // Divider
-            var divider = new Panel
+            var divider1 = new Panel
             {
                 Width = 1,
                 Height = 36,
@@ -111,10 +112,35 @@ namespace LightNovelEditor
             formatGroup.Controls.Add(italicButton);
             formatGroup.Controls.Add(underlineButton);
             formatGroup.Controls.Add(fontButton);
+
+            // Divider
+            var divider2 = new Panel
+            {
+                Width = 1,
+                Height = 36,
+                BackColor = Color.FromArgb(230, 230, 230),
+                Margin = new Padding(16, 0, 16, 0)
+            };
+
+            // Upload group
+            var uploadGroup = new FlowLayoutPanel
+            {
+                FlowDirection = FlowDirection.LeftToRight,
+                WrapContents = false,
+                AutoSize = true,
+                Margin = new Padding(0, 0, 0, 0)
+            };
+
+            var uploadButton = CreateToolbarButton("Upload to Website", "⬆️");
+            uploadButton.Width = 40;
+            uploadButton.Click += (s, e) => UploadClicked?.Invoke(this, EventArgs.Empty);
+            uploadGroup.Controls.Add(uploadButton);
             
             container.Controls.Add(fileGroup);
-            container.Controls.Add(divider);
+            container.Controls.Add(divider1);
             container.Controls.Add(formatGroup);
+            container.Controls.Add(divider2);
+            container.Controls.Add(uploadGroup);
         }
         
         private Button CreateToolbarButton(string tooltip, string text)
@@ -122,23 +148,17 @@ namespace LightNovelEditor
             var button = new Button
             {
                 Text = text,
-                Width = 36,
-                Height = 36,
+                Size = new Size(34, 34),
+                Font = new Font("Segoe UI", 11F, FontStyle.Regular),
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 11F),
                 BackColor = Color.White,
                 ForeColor = Color.FromArgb(60, 60, 70),
-                Margin = new Padding(0, 0, 8, 0),
-                Cursor = Cursors.Hand,
-                UseVisualStyleBackColor = true
+                Cursor = Cursors.Hand
             };
-            
-            button.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
             button.FlatAppearance.BorderSize = 1;
+            button.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
             button.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
-            button.FlatAppearance.MouseDownBackColor = Color.FromArgb(230, 230, 230);
             
-            // Add tooltip
             var toolTip = new ToolTip();
             toolTip.SetToolTip(button, tooltip);
             

@@ -7,8 +7,10 @@ namespace LightNovelEditor
     public class NavigationPanel : Panel
     {
         private readonly TreeView navigationTree;
+        private readonly Button? addChapterButton;
         
         public event EventHandler<NavigationItemSelectedEventArgs>? ItemSelected;
+        public event EventHandler? AddChapterRequested;
 
         public NavigationPanel()
         {
@@ -69,49 +71,26 @@ namespace LightNovelEditor
                 };
                 buttonPanel.Controls.Add(topBorder);
                 
-                var addButton = new Button
+                addChapterButton = new Button
                 {
-                    Text = "+",
-                    Size = new Size(34, 34),
-                    Location = new Point(12, 8),
-                    Font = new Font("Segoe UI", 12F, FontStyle.Regular),
+                    Text = "Add Chapter",
+                    Dock = DockStyle.Fill,
+                    Font = new Font("Segoe UI", 10F, FontStyle.Regular),
                     FlatStyle = FlatStyle.Flat,
                     BackColor = Color.White,
                     ForeColor = Color.FromArgb(60, 60, 70),
                     Cursor = Cursors.Hand
                 };
-                addButton.FlatAppearance.BorderSize = 1;
-                addButton.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
-                addButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+                addChapterButton.FlatAppearance.BorderSize = 1;
+                addChapterButton.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
+                addChapterButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
+                addChapterButton.Click += (s, e) => AddChapterRequested?.Invoke(this, EventArgs.Empty);
                 
-                var removeButton = new Button
-                {
-                    Text = "-",
-                    Size = new Size(34, 34),
-                    Location = new Point(54, 8),
-                    Font = new Font("Segoe UI", 12F, FontStyle.Regular),
-                    FlatStyle = FlatStyle.Flat,
-                    BackColor = Color.White,
-                    ForeColor = Color.FromArgb(60, 60, 70),
-                    Cursor = Cursors.Hand
-                };
-                removeButton.FlatAppearance.BorderSize = 1;
-                removeButton.FlatAppearance.BorderColor = Color.FromArgb(220, 220, 220);
-                removeButton.FlatAppearance.MouseOverBackColor = Color.FromArgb(240, 240, 240);
-                
-                // Add tooltips
-                var addTooltip = new ToolTip();
-                addTooltip.SetToolTip(addButton, "Add Item");
-                
-                var removeTooltip = new ToolTip();
-                removeTooltip.SetToolTip(removeButton, "Remove Item");
-                
-                buttonPanel.Controls.Add(addButton);
-                buttonPanel.Controls.Add(removeButton);
+                buttonPanel.Controls.Add(addChapterButton);
                 this.Controls.Add(buttonPanel);
                 
-                // Initialize with demo content after control is fully created
-                this.HandleCreated += (s, e) => PopulateTreeView();
+                // Initialize with empty chapters list
+                this.HandleCreated += (s, e) => InitializeTreeView();
             }
             catch (Exception ex)
             {
@@ -127,64 +106,69 @@ namespace LightNovelEditor
             }
         }
         
-        private void PopulateTreeView()
+        private void InitializeTreeView()
         {
             try
             {
                 // Clear existing nodes first
                 navigationTree.Nodes.Clear();
                 
-                // Add project root node
-                TreeNode projectNode = navigationTree.Nodes.Add("My Novel");
-                projectNode.ImageIndex = 0;
-                
-                // Add chapters section
-                TreeNode chaptersNode = projectNode.Nodes.Add("Chapters");
-                chaptersNode.Tag = "chapter_section";
-                
-                // Add sample chapters
-                var chapter1 = chaptersNode.Nodes.Add("Chapter 1: The Beginning");
-                chapter1.Tag = new ChapterInfo { Id = 1, Title = "The Beginning" };
-                
-                var chapter2 = chaptersNode.Nodes.Add("Chapter 2: The Journey");
-                chapter2.Tag = new ChapterInfo { Id = 2, Title = "The Journey" };
-                
-                var chapter3 = chaptersNode.Nodes.Add("Chapter 3: The Revelation");
-                chapter3.Tag = new ChapterInfo { Id = 3, Title = "The Revelation" };
-                
-                // Add characters section
-                TreeNode charactersNode = projectNode.Nodes.Add("Characters");
-                charactersNode.Tag = "character_section";
-                
-                var mainChar = charactersNode.Nodes.Add("Protagonist");
-                mainChar.Tag = new CharacterInfo { Id = 1, Name = "Protagonist", Type = "Main" };
-                
-                var supportChar = charactersNode.Nodes.Add("Supporting Character");
-                supportChar.Tag = new CharacterInfo { Id = 2, Name = "Supporting Character", Type = "Supporting" };
-                
-                var antagonistChar = charactersNode.Nodes.Add("Antagonist");
-                antagonistChar.Tag = new CharacterInfo { Id = 3, Name = "Antagonist", Type = "Villain" };
-                
-                // Add notes section
-                TreeNode notesNode = projectNode.Nodes.Add("Notes");
-                notesNode.Tag = "notes_section";
-                
-                var worldBuilding = notesNode.Nodes.Add("World Building");
-                worldBuilding.Tag = new NoteInfo { Id = 1, Title = "World Building" };
-                
-                var plotIdeas = notesNode.Nodes.Add("Plot Ideas");
-                plotIdeas.Tag = new NoteInfo { Id = 2, Title = "Plot Ideas" };
-                
-                // Expand all nodes for initial view
-                projectNode.Expand();
+                // Add chapters root node
+                TreeNode chaptersNode = navigationTree.Nodes.Add("Chapters");
+                chaptersNode.Tag = "chapters_root";
                 chaptersNode.Expand();
-                charactersNode.Expand();
-                notesNode.Expand();
             }
             catch (Exception ex)
             {
-                Console.WriteLine($"Error populating tree view: {ex.Message}");
-                // Continue without crashing
+                Console.WriteLine($"Error initializing tree view: {ex.Message}");
+            }
+        }
+
+        public void AddChapter(int chapterNumber, string title)
+        {
+            try
+            {
+                if (navigationTree.Nodes.Count == 0)
+                {
+                    InitializeTreeView();
+                }
+
+                var chaptersNode = navigationTree.Nodes[0];
+
+                // Check for existing chapter with the same number
+                foreach (TreeNode node in chaptersNode.Nodes)
+                {
+                    if (node.Tag is ChapterInfo existingChapter && existingChapter.Id == chapterNumber)
+                    {
+                        MessageBox.Show($"Chapter {chapterNumber} already exists.", "Duplicate Chapter", 
+                            MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        return;
+                    }
+                }
+
+                var newChapterInfo = new ChapterInfo { Id = chapterNumber, Title = title };
+                var newNodeText = $"Chapter {chapterNumber}: {title}";
+
+                // Find the correct position to insert the new chapter
+                int insertIndex = 0;
+                while (insertIndex < chaptersNode.Nodes.Count)
+                {
+                    if (chaptersNode.Nodes[insertIndex].Tag is ChapterInfo existingChapter 
+                        && existingChapter.Id > chapterNumber)
+                    {
+                        break;
+                    }
+                    insertIndex++;
+                }
+
+                // Insert the new node at the correct position
+                var chapterNode = chaptersNode.Nodes.Insert(insertIndex, newNodeText);
+                chapterNode.Tag = newChapterInfo;
+                chaptersNode.Expand();
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error adding chapter: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }
@@ -202,19 +186,6 @@ namespace LightNovelEditor
     }
     
     public class ChapterInfo
-    {
-        public int Id { get; set; }
-        public string Title { get; set; } = string.Empty;
-    }
-    
-    public class CharacterInfo
-    {
-        public int Id { get; set; }
-        public string Name { get; set; } = string.Empty;
-        public string Type { get; set; } = string.Empty;
-    }
-    
-    public class NoteInfo
     {
         public int Id { get; set; }
         public string Title { get; set; } = string.Empty;

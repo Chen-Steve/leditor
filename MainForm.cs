@@ -2,6 +2,7 @@ using System;
 using System.Drawing;
 using System.IO;
 using System.Windows.Forms;
+using System.Threading.Tasks;
 
 namespace LightNovelEditor
 {
@@ -13,9 +14,12 @@ namespace LightNovelEditor
         private string? currentFilePath;
         private SplitContainer? splitContainer;
         private bool isInitializing = true;
+        private readonly ChapterManager chapterManager;
+        private ChapterInfo? currentChapter;
 
         public MainForm()
         {
+            chapterManager = new ChapterManager();
             try
             {
                 // Basic form setup
@@ -240,43 +244,55 @@ namespace LightNovelEditor
                 toolbar.ItalicClicked += (s, e) => editorPanel.ToggleItalic();
                 toolbar.UnderlineClicked += (s, e) => editorPanel.ToggleUnderline();
                 toolbar.FontClicked += (s, e) => FormatFont();
+                toolbar.UploadClicked += (s, e) => UploadChapter();
                 
                 // Navigation panel events
                 navigationPanel.ItemSelected += (s, e) => 
                 {
                     if (e.Tag is ChapterInfo chapterInfo)
                     {
+                        // Save current chapter content if we have one
+                        if (currentChapter != null)
+                        {
+                            chapterManager.SaveChapterContent(
+                                currentChapter.Id,
+                                currentChapter.Title,
+                                editorPanel.Text
+                            );
+                        }
+
+                        // Load the selected chapter
+                        currentChapter = chapterInfo;
                         editorPanel.SetDocumentTitle($"Chapter {chapterInfo.Id}: {chapterInfo.Title}");
-                        // In a real app, we would load the chapter content here
-                    }
-                    else if (e.Tag is CharacterInfo characterInfo)
-                    {
-                        editorPanel.SetDocumentTitle($"Character: {characterInfo.Name}");
-                        // In a real app, we would load the character information here
-                    }
-                    else if (e.Tag is NoteInfo noteInfo)
-                    {
-                        editorPanel.SetDocumentTitle($"Note: {noteInfo.Title}");
-                        // In a real app, we would load the note content here
+                        editorPanel.Text = chapterManager.LoadChapterContent(chapterInfo.Id, chapterInfo.Title);
                     }
                 };
+
+                // Editor content changed event
+                editorPanel.ContentChanged += (s, e) =>
+                {
+                    if (currentChapter != null)
+                    {
+                        chapterManager.SaveChapterContent(
+                            currentChapter.Id,
+                            currentChapter.Title,
+                            editorPanel.Text
+                        );
+                    }
+                };
+
+                navigationPanel.AddChapterRequested += (s, e) => ShowAddChapterDialog();
                 
-                // Form closing event
+                // Form closing event - no need to prompt for saves anymore as content is auto-saved
                 this.FormClosing += (s, e) =>
                 {
-                    if (editorPanel.Modified)
+                    if (currentChapter != null)
                     {
-                        var result = MessageBox.Show("Do you want to save changes before closing?", 
-                            "Unsaved Changes", MessageBoxButtons.YesNoCancel, MessageBoxIcon.Question);
-                        
-                        if (result == DialogResult.Yes)
-                        {
-                            SaveFile(false);
-                        }
-                        else if (result == DialogResult.Cancel)
-                        {
-                            e.Cancel = true;
-                        }
+                        chapterManager.SaveChapterContent(
+                            currentChapter.Id,
+                            currentChapter.Title,
+                            editorPanel.Text
+                        );
                     }
                 };
             }
@@ -284,6 +300,97 @@ namespace LightNovelEditor
             {
                 MessageBox.Show($"Event wiring error: {ex.Message}\n\nStack Trace: {ex.StackTrace}", "Error", 
                     MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        private void ShowAddChapterDialog()
+        {
+            if (navigationPanel == null || editorPanel == null) return;
+
+            using (var form = new Form())
+            {
+                form.Text = "Add New Chapter";
+                form.Size = new Size(400, 200);
+                form.StartPosition = FormStartPosition.CenterParent;
+                form.FormBorderStyle = FormBorderStyle.FixedDialog;
+                form.MaximizeBox = false;
+                form.MinimizeBox = false;
+
+                var chapterNumberLabel = new Label
+                {
+                    Text = "Chapter Number:",
+                    Location = new Point(20, 20),
+                    AutoSize = true
+                };
+                form.Controls.Add(chapterNumberLabel);
+
+                var chapterNumberInput = new NumericUpDown
+                {
+                    Location = new Point(20, 40),
+                    Width = 340,
+                    Minimum = 1,
+                    Maximum = 9999
+                };
+                form.Controls.Add(chapterNumberInput);
+
+                var titleLabel = new Label
+                {
+                    Text = "Chapter Title:",
+                    Location = new Point(20, 70),
+                    AutoSize = true
+                };
+                form.Controls.Add(titleLabel);
+
+                var titleInput = new TextBox
+                {
+                    Location = new Point(20, 90),
+                    Width = 340
+                };
+                form.Controls.Add(titleInput);
+
+                var addButton = new Button
+                {
+                    Text = "Add",
+                    DialogResult = DialogResult.OK,
+                    Location = new Point(180, 130),
+                    Width = 80
+                };
+                form.Controls.Add(addButton);
+
+                var cancelButton = new Button
+                {
+                    Text = "Cancel",
+                    DialogResult = DialogResult.Cancel,
+                    Location = new Point(280, 130),
+                    Width = 80
+                };
+                form.Controls.Add(cancelButton);
+
+                form.AcceptButton = addButton;
+                form.CancelButton = cancelButton;
+
+                if (form.ShowDialog() == DialogResult.OK)
+                {
+                    // Save current chapter content if we have one
+                    if (currentChapter != null)
+                    {
+                        chapterManager.SaveChapterContent(
+                            currentChapter.Id,
+                            currentChapter.Title,
+                            editorPanel.Text
+                        );
+                    }
+
+                    var chapterNumber = (int)chapterNumberInput.Value;
+                    var title = titleInput.Text.Trim();
+                    
+                    // Create the new chapter
+                    navigationPanel.AddChapter(chapterNumber, title);
+                    currentChapter = new ChapterInfo { Id = chapterNumber, Title = title };
+                    editorPanel.Clear();
+                    editorPanel.Text = "";
+                    editorPanel.SetDocumentTitle($"Chapter {chapterNumber}: {title}");
+                }
             }
         }
 
@@ -399,6 +506,147 @@ namespace LightNovelEditor
                     editorPanel.SelectionFont = fontDialog.Font;
                     editorPanel.SelectionColor = fontDialog.Color;
                 }
+            }
+        }
+
+        private async void UploadChapter()
+        {
+            if (editorPanel == null) return;
+
+            try
+            {
+                // Show login dialog if not authenticated
+                if (string.IsNullOrEmpty(SupabaseConfig.AccessToken))
+                {
+                    using (var loginForm = new LoginForm())
+                    {
+                        if (loginForm.ShowDialog() != DialogResult.OK)
+                        {
+                            return;
+                        }
+                    }
+                }
+
+                // Get novel ID
+                using (var form = new Form())
+                {
+                    form.Text = "Upload Chapter";
+                    form.Size = new Size(400, 300);
+                    form.StartPosition = FormStartPosition.CenterParent;
+                    form.FormBorderStyle = FormBorderStyle.FixedDialog;
+                    form.MaximizeBox = false;
+                    form.MinimizeBox = false;
+
+                    var novelIdLabel = new Label
+                    {
+                        Text = "Novel ID:",
+                        Location = new Point(20, 20),
+                        AutoSize = true
+                    };
+                    form.Controls.Add(novelIdLabel);
+
+                    var novelIdInput = new TextBox
+                    {
+                        Location = new Point(20, 40),
+                        Width = 340
+                    };
+                    form.Controls.Add(novelIdInput);
+
+                    var chapterNumberLabel = new Label
+                    {
+                        Text = "Chapter Number:",
+                        Location = new Point(20, 70),
+                        AutoSize = true
+                    };
+                    form.Controls.Add(chapterNumberLabel);
+
+                    var chapterNumberInput = new NumericUpDown
+                    {
+                        Location = new Point(20, 90),
+                        Width = 340,
+                        Minimum = 1,
+                        Maximum = 9999
+                    };
+                    form.Controls.Add(chapterNumberInput);
+
+                    var titleLabel = new Label
+                    {
+                        Text = "Chapter Title:",
+                        Location = new Point(20, 120),
+                        AutoSize = true
+                    };
+                    form.Controls.Add(titleLabel);
+
+                    var titleInput = new TextBox
+                    {
+                        Location = new Point(20, 140),
+                        Width = 340
+                    };
+                    form.Controls.Add(titleInput);
+
+                    var ageRatingLabel = new Label
+                    {
+                        Text = "Age Rating:",
+                        Location = new Point(20, 170),
+                        AutoSize = true
+                    };
+                    form.Controls.Add(ageRatingLabel);
+
+                    var ageRatingCombo = new ComboBox
+                    {
+                        Location = new Point(20, 190),
+                        Width = 340,
+                        DropDownStyle = ComboBoxStyle.DropDownList
+                    };
+                    ageRatingCombo.Items.AddRange(new[] { "EVERYONE", "TEEN", "MATURE", "ADULT" });
+                    ageRatingCombo.SelectedIndex = 0;
+                    form.Controls.Add(ageRatingCombo);
+
+                    var uploadButton = new Button
+                    {
+                        Text = "Upload",
+                        DialogResult = DialogResult.OK,
+                        Location = new Point(180, 220),
+                        Width = 80
+                    };
+                    form.Controls.Add(uploadButton);
+
+                    var cancelButton = new Button
+                    {
+                        Text = "Cancel",
+                        DialogResult = DialogResult.Cancel,
+                        Location = new Point(280, 220),
+                        Width = 80
+                    };
+                    form.Controls.Add(cancelButton);
+
+                    form.AcceptButton = uploadButton;
+                    form.CancelButton = cancelButton;
+
+                    if (form.ShowDialog() != DialogResult.OK)
+                    {
+                        return;
+                    }
+
+                    var uploader = new ChapterUploader();
+                    var request = new ChapterUploader.ChapterUploadRequest
+                    {
+                        ChapterNumber = (int)chapterNumberInput.Value,
+                        Title = titleInput.Text.Trim(),
+                        Content = editorPanel.Text.Trim(),
+                        AgeRating = ageRatingCombo.SelectedItem?.ToString() ?? "EVERYONE"
+                    };
+
+                    var success = await uploader.UploadChapterAsync(novelIdInput.Text.Trim(), request);
+                    if (success)
+                    {
+                        MessageBox.Show("Chapter uploaded successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Error during upload: {ex.Message}", "Upload Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

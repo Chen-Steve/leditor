@@ -17,6 +17,18 @@ namespace LightNovelEditor
 
             try
             {
+                // Load environment variables from .env file
+                DotNetEnv.Env.Load();
+
+                // Initialize Supabase configuration from environment variables
+                SupabaseConfig.Url = DotNetEnv.Env.GetString("SUPABASE_URL");
+                SupabaseConfig.Key = DotNetEnv.Env.GetString("SUPABASE_KEY");
+
+                if (string.IsNullOrEmpty(SupabaseConfig.Url) || string.IsNullOrEmpty(SupabaseConfig.Key))
+                {
+                    throw new Exception("Supabase configuration is missing. Please check your .env file.");
+                }
+
                 Application.Run(new MainForm());
             }
             catch (Exception ex)
