@@ -113,14 +113,15 @@ namespace LightNovelEditor
                 SizeMode = PictureBoxSizeMode.Zoom,
                 Location = new Point((contentPanel.Width - 120) / 2, 40),
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right,
-                BackColor = Color.Transparent
+                BackColor = Color.Transparent,
+                BorderStyle = BorderStyle.FixedSingle
             };
             logoBox.MouseDown += LoginForm_MouseDown; // Make logo draggable too
             
             try
             {
-                // Attempt to load the logo, but don't crash if it's not found
-                string logoPath = "logo.png";
+                // Attempt to load the logo
+                string logoPath = "lanry.jpg";
                 if (System.IO.File.Exists(logoPath))
                 {
                     logoBox.Image = Image.FromFile(logoPath);
@@ -128,6 +129,10 @@ namespace LightNovelEditor
                 else
                 {
                     // Create a text-based logo if image not found
+                    MaterialMessageBox.Show("Logo file 'lanry.png' not found.", "Warning",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                        
+                    /* Placeholder LE logo
                     var bmp = new Bitmap(100, 100);
                     using (var g = Graphics.FromImage(bmp))
                     {
@@ -136,11 +141,15 @@ namespace LightNovelEditor
                             Brushes.White, new PointF(18, 18));
                     }
                     logoBox.Image = bmp;
+                    */
                 }
             }
-            catch
+            catch (Exception ex)
             {
-                // If there's an error loading the image, use a placeholder
+                MaterialMessageBox.Show($"Error loading logo: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    
+                /* Placeholder LE logo
                 var bmp = new Bitmap(100, 100);
                 using (var g = Graphics.FromImage(bmp))
                 {
@@ -149,6 +158,7 @@ namespace LightNovelEditor
                         Brushes.White, new PointF(18, 18));
                 }
                 logoBox.Image = bmp;
+                */
             }
             
             contentPanel.Controls.Add(logoBox);
