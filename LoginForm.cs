@@ -1,4 +1,5 @@
 using System;
+using System.Drawing;
 using System.Windows.Forms;
 using System.Threading.Tasks;
 using System.Collections.Generic;
@@ -10,87 +11,98 @@ namespace LightNovelEditor
 {
     public class LoginForm : Form
     {
-        private TextBox emailInput = new();
-        private TextBox passwordInput = new();
-        private Button loginButton = new();
-        private Button cancelButton = new();
-        private Label statusLabel = new();
+        private readonly TextBox emailTextBox;
+        private readonly TextBox passwordTextBox;
+        private bool skippedLogin = false;
         private readonly HttpClient httpClient;
+
+        public static bool IsLoggedIn { get; private set; }
+        public bool SkippedLogin => skippedLogin;
 
         public LoginForm()
         {
             httpClient = new HttpClient();
-            InitializeComponent();
-        }
+            Text = "Login";
+            Size = new Size(400, 300);
+            StartPosition = FormStartPosition.CenterParent;
+            FormBorderStyle = FormBorderStyle.FixedDialog;
+            MaximizeBox = false;
+            MinimizeBox = false;
 
-        private void InitializeComponent()
-        {
-            this.Text = "Login to Website";
-            this.Size = new Size(400, 250);
-            this.StartPosition = FormStartPosition.CenterParent;
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-
+            // Email field
             var emailLabel = new Label
             {
                 Text = "Email:",
                 Location = new Point(20, 20),
                 AutoSize = true
             };
-            this.Controls.Add(emailLabel);
+            Controls.Add(emailLabel);
 
-            emailInput = new TextBox
+            emailTextBox = new TextBox
             {
                 Location = new Point(20, 40),
-                Width = 340
+                Width = 340,
+                Font = new Font("Segoe UI", 10F)
             };
-            this.Controls.Add(emailInput);
+            Controls.Add(emailTextBox);
 
+            // Password field
             var passwordLabel = new Label
             {
                 Text = "Password:",
-                Location = new Point(20, 70),
+                Location = new Point(20, 80),
                 AutoSize = true
             };
-            this.Controls.Add(passwordLabel);
+            Controls.Add(passwordLabel);
 
-            passwordInput = new TextBox
+            passwordTextBox = new TextBox
             {
-                Location = new Point(20, 90),
+                Location = new Point(20, 100),
                 Width = 340,
-                PasswordChar = '•'
+                PasswordChar = '•',
+                Font = new Font("Segoe UI", 10F)
             };
-            this.Controls.Add(passwordInput);
+            Controls.Add(passwordTextBox);
 
-            statusLabel = new Label
-            {
-                Location = new Point(20, 120),
-                Size = new Size(340, 40),
-                ForeColor = Color.Red
-            };
-            this.Controls.Add(statusLabel);
-
-            loginButton = new Button
+            // Login button
+            var loginButton = new Button
             {
                 Text = "Login",
-                Location = new Point(180, 170),
-                Width = 80
+                Location = new Point(20, 160),
+                Width = 160,
+                Height = 40,
+                Font = new Font("Segoe UI", 10F),
+                BackColor = Color.FromArgb(0, 120, 212),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat
             };
             loginButton.Click += LoginButton_Click;
-            this.Controls.Add(loginButton);
+            Controls.Add(loginButton);
 
-            cancelButton = new Button
+            // Skip login button
+            var skipButton = new Button
             {
-                Text = "Cancel",
-                DialogResult = DialogResult.Cancel,
-                Location = new Point(280, 170),
-                Width = 80
+                Text = "Guest",
+                Location = new Point(200, 160),
+                Width = 160,
+                Height = 40,
+                Font = new Font("Segoe UI", 10F),
+                FlatStyle = FlatStyle.Flat
             };
-            this.Controls.Add(cancelButton);
+            skipButton.Click += SkipButton_Click;
+            Controls.Add(skipButton);
 
-            this.AcceptButton = loginButton;
-            this.CancelButton = cancelButton;
+            // Register link
+            var registerLink = new LinkLabel
+            {
+                Text = "Don't have an account? Register here",
+                Location = new Point(20, 220),
+                AutoSize = true
+            };
+            registerLink.Click += RegisterLink_Click;
+            Controls.Add(registerLink);
+
+            AcceptButton = loginButton;
         }
 
         private class LoginRequest
@@ -121,57 +133,57 @@ namespace LightNovelEditor
         {
             try
             {
-                loginButton.Enabled = false;
-                statusLabel.Text = "Logging in...";
-                statusLabel.ForeColor = Color.Black;
+                string email = emailTextBox.Text.Trim();
+                string password = passwordTextBox.Text;
 
-                var request = new LoginRequest
+                if (string.IsNullOrEmpty(email) || string.IsNullOrEmpty(password))
                 {
-                    Email = emailInput.Text,
-                    Password = passwordInput.Text
-                };
-
-                var content = new StringContent(
-                    JsonConvert.SerializeObject(request),
-                    Encoding.UTF8,
-                    "application/json"
-                );
-
-                httpClient.DefaultRequestHeaders.Add("apikey", SupabaseConfig.Key);
-
-                var response = await httpClient.PostAsync(
-                    $"{SupabaseConfig.Url}/auth/v1/token?grant_type=password",
-                    content
-                );
-
-                if (response.IsSuccessStatusCode)
-                {
-                    var result = JsonConvert.DeserializeObject<LoginResponse>(
-                        await response.Content.ReadAsStringAsync()
-                    );
-
-                    if (result?.AccessToken != null)
-                    {
-                        SupabaseConfig.AccessToken = result.AccessToken;
-                        this.DialogResult = DialogResult.OK;
-                        this.Close();
-                    }
-                    else
-                    {
-                        throw new Exception("Login failed: No access token received");
-                    }
+                    MessageBox.Show("Please enter both email and password.", "Login Error",
+                        MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
                 }
-                else
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"Login failed: {error}");
-                }
+
+                Cursor = Cursors.WaitCursor;
+                // TODO: Implement actual login logic here
+                await Task.Delay(1000); // Simulated login delay
+                IsLoggedIn = true; // Set login state to true on successful login
+
+                DialogResult = DialogResult.OK;
+                Close();
             }
             catch (Exception ex)
             {
-                statusLabel.Text = $"Login failed: {ex.Message}";
-                statusLabel.ForeColor = Color.Red;
-                loginButton.Enabled = true;
+                MessageBox.Show($"Login failed: {ex.Message}", "Login Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                Cursor = Cursors.Default;
+            }
+        }
+
+        private void SkipButton_Click(object? sender, EventArgs e)
+        {
+            skippedLogin = true;
+            IsLoggedIn = false; // Ensure logged out state when skipping
+            DialogResult = DialogResult.OK;
+            Close();
+        }
+
+        private void RegisterLink_Click(object? sender, EventArgs e)
+        {
+            try
+            {
+                System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+                {
+                    FileName = "https://lanry.space/auth",
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show($"Could not open registration page: {ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
     }

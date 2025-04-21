@@ -29,6 +29,12 @@ namespace LightNovelEditor
                 this.Size = new Size(1280, 800);
                 this.StartPosition = FormStartPosition.CenterScreen;
 
+                // Show login dialog
+                using (var loginForm = new LoginForm())
+                {
+                    loginForm.ShowDialog();
+                }
+
                 // Create UI components
                 CreateUIComponents();
 
@@ -508,11 +514,11 @@ namespace LightNovelEditor
             try
             {
                 // Show login dialog if not authenticated
-                if (string.IsNullOrEmpty(SupabaseConfig.AccessToken))
+                if (!LoginForm.IsLoggedIn)
                 {
                     using (var loginForm = new LoginForm())
                     {
-                        if (loginForm.ShowDialog() != DialogResult.OK)
+                        if (loginForm.ShowDialog() != DialogResult.OK || loginForm.SkippedLogin)
                         {
                             return;
                         }
