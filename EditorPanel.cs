@@ -11,11 +11,13 @@ namespace LightNovelEditor
         private readonly RichTextBox richTextBox;
         private readonly Label headerLabel;
         private readonly Label wordCountLabel;
+        private readonly ChapterManager chapterManager;
         
         public event EventHandler? ContentChanged;
         
-        public EditorPanel()
+        public EditorPanel(ChapterManager chapterManager)
         {
+            this.chapterManager = chapterManager;
             this.Dock = DockStyle.Fill;
             this.BackColor = Color.White;
             this.Padding = new Padding(20);
@@ -267,6 +269,12 @@ namespace LightNovelEditor
             var text = richTextBox.Text.Trim();
             int wordCount = text.Length == 0 ? 0 : text.Split(new[] { ' ', '\n', '\r', '\t' }, StringSplitOptions.RemoveEmptyEntries).Length;
             wordCountLabel.Text = $"Words: {wordCount:N0}";
+        }
+
+        public void LoadChapter(ChapterInfo chapterInfo)
+        {
+            Text = chapterManager.LoadChapterContent(chapterInfo.Id, chapterInfo.Title);
+            SetDocumentTitle($"Chapter {chapterInfo.Id}: {chapterInfo.Title}");
         }
     }
 } 

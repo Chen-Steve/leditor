@@ -181,19 +181,11 @@ namespace LightNovelEditor
             };
 
             // Create and add the navigation panel
-            navigationPanel = new NavigationPanel
-            {
-                Dock = DockStyle.Fill,
-                MinimumSize = new Size(200, 0)
-            };
+            navigationPanel = new NavigationPanel(chapterManager);
             splitContainer.Panel1.Controls.Add(navigationPanel);
 
             // Create and add the editor panel
-            editorPanel = new EditorPanel
-            {
-                Dock = DockStyle.Fill,
-                MinimumSize = new Size(400, 0)
-            };
+            editorPanel = new EditorPanel(chapterManager);
             splitContainer.Panel2.Controls.Add(editorPanel);
 
             // Add the split container to its container panel
@@ -249,7 +241,7 @@ namespace LightNovelEditor
                 // Navigation panel events
                 navigationPanel.ItemSelected += (s, e) => 
                 {
-                    if (e.Tag is ChapterInfo chapterInfo)
+                    if (e.Node?.Tag is ChapterInfo chapterInfo)
                     {
                         // Save current chapter content if we have one
                         if (currentChapter != null)
